@@ -187,10 +187,10 @@ if __name__ == "__main__":
     parser.add_argument("-v", action="count", default=0,
                         help="increase output verbosity")
     parser.add_argument("--info",
-                        help="set output verbosity to INFO",
+                        help="set output verbosity to 1 (INFO)",
                         action="store_true")
     parser.add_argument("--debug",
-                        help="set output verbosity to DEBUG",
+                        help="set output verbosity to 2 (DEBUG)",
                         action="store_true")
     parser.add_argument("--verbosity", type=int, choices=[0, 1, 2],
                         help="set output verbosity")    
