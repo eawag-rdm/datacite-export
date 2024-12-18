@@ -13,6 +13,8 @@ import os
 
 import math
 
+import pytest
+
 LOGGER = logging.getLogger(__name__)
 root_logger = logging.getLogger()
 
