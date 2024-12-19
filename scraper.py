@@ -21,7 +21,7 @@ root_logger = logging.getLogger()
 #https://support.datacite.org/docs/api-get-doi
 
 def get_doi_list(doi_prefix="10.14454",
-                 headers={"User-Agent": "dc2os", "From": "noreply@example.com"},
+                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
                  filename=None):
     
     #logic to determine page or cursor approach
@@ -44,7 +44,7 @@ def get_doi_list_page(doi_prefix="10.14454",
                  page_size = 100,
                  start_page = 1,
                  stop_offset = 0,
-                 headers={"User-Agent": "dc2os", "From": "noreply@example.com"},
+                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
                  filename=None):
     doi_list = []
 
@@ -88,7 +88,7 @@ def get_doi_list_cursor(doi_prefix="10.14454",
 #                        url_template = "https://api.datacite.org/dois?provider-id=%s&page[cursor]=1&page[size]=%i",
                         url_template = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&page[size]=%i",
                         page_size=1000,
-                        headers={"User-Agent": "dc2os", "From": "noreply@example.com"},
+                        headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
                         filename=None):
     doi_list = []
 
@@ -134,7 +134,7 @@ def datacite_doi_json_to_list(dc_j):
 
 def get_xml_list(doi_list=["10.14454/FXWS-0523"],
                  url_template = "https://api.datacite.org/dois/%s",
-                 headers={"User-Agent": "dc2os", "From": "noreply@example.com"},
+                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
                  folder=None):
 
     xml_list = []
@@ -202,7 +202,7 @@ if __name__ == "__main__":
     ##consider adding an ERROR level logging
 
     #set User-Agent for requests
-    headers={"User-Agent": "dc2os",
+    headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export",
              "From": args.mailto}  
 
     #DOIs to be written to the specified file
