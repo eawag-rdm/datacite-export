@@ -15,6 +15,10 @@ import math
 
 import pytest
 
+import python_on_whales
+from python_on_whales import docker
+from python_on_whales import exceptions as d_exceptions
+
 LOGGER = logging.getLogger(__name__)
 root_logger = logging.getLogger()
 
@@ -132,10 +136,13 @@ def datacite_doi_json_to_list(dc_j):
 
     return doi_list
 
-def get_xml_list(doi_list=["10.14454/FXWS-0523"],
-                 url_template = "https://api.datacite.org/dois/%s",
-                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
-                 folder=None):
+def get_xml_list():
+    pass
+
+def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
+                          url_template = "https://api.datacite.org/dois/%s",
+                          headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
+                          folder=None):
 
     xml_list = []
 
@@ -156,6 +163,17 @@ def get_xml_list(doi_list=["10.14454/FXWS-0523"],
         xml_list.append(dc_xml_et)
 
     return xml_list
+
+def get_xml_list_bolognese(doi_url="https://doi.org/10.7554/elife.01567",
+                           docker_image="bolognese-cli"):
+    try:
+        docker.run(docker_image,
+                  [doi_url],
+                  remove=True)
+    except python_on_whales.ClientNotFoundError as e:
+        LOGGER.error("Docker not found")
+    except d_exceptions.NoSuchImage as e:
+        LOGGER.error("Docker image not found")
 
 if __name__ == "__test__":
     #example pagination
@@ -252,6 +270,8 @@ if __name__ == "__main__":
         print(get_doi_list(args.doi_prefix, headers=headers))
     else:
         get_doi_list(args.doi_prefix,headers=headers, filename=args.doi.name)
+
+    get_xml_list_bolognese()
 
     
 
