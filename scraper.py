@@ -168,7 +168,7 @@ def get_xml_list_bolognese(doi_url="https://doi.org/10.7554/elife.01567",
                            docker_image="bolognese-cli"):
     try:
         xml = docker.run(docker_image,
-                         [doi_url],
+                         [doi_url, "-t datacite"],
                          remove=True)
         print(xml)
     except python_on_whales.ClientNotFoundError as e:
