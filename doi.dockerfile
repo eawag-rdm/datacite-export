@@ -9,3 +9,5 @@ WORKDIR /app
 
 RUN git clone https://github.com/eawag-rdm/datacite-export.git
 RUN pip install -r datacite-export/requirements.txt
+
+CMD ["python", "datacite-export/scraper.py"]
