@@ -16,3 +16,9 @@ python:
 	python3 -m venv venv
 	. venv/bin/activate
 	python3 -m pip install -r requirements.txt
+	
+uv:
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	uv init exdc
+	cd exdc
+	uv add -r ../requirements.txt
