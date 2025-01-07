@@ -1,0 +1,13 @@
+services:
+  bolognese:
+    restart: unless-stopped
+    build:
+      context: bolognese
+      dockerfile: bolognese.dockerfile
+    container_name: bolognese
+  exdc:
+    restart: unless-stopped
+    build:
+      context: exdc
+      dockerfile: doi.dockerfile
+    container_name: exdc
