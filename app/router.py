@@ -12,12 +12,12 @@ from fastapi.routing import APIRoute
 #from app.edna import api_edna
 #from app.external_doi import api_external_doi
 
-from config import config_app
+from app.config import config_app
 #from converters import api_converters
 #from edna import api_edna
 #from external_doi import api_external_doi
 
-#from doi_agency import datacite
+from app.doi_agency import doi_agency_router
 
 
 # Setup logging
@@ -49,7 +49,7 @@ api_router = APIRouter()
 
 # Add routers to api_router
 #api_router.include_router(api_converters.router)
-#api_router.include_router(api_external_doi.router)
+api_router.include_router(doi_agency_router.router)
 #api_router.include_router(api_edna.router)
 
 # Setup error router
