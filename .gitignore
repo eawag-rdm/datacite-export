@@ -1,2 +1,14 @@
-.venv
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Secret files
+*.env
+
+# Packaging
+__pypackages__/
+/.pdm-python
+*venv
+
+# helper scripts
 *.bat
