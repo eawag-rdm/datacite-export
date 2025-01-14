@@ -1,7 +1,7 @@
 """Main init file for FastAPI project datacite-export"""
 
-import os
-print(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+#import os
+#print(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 import logging
 import sys
@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import config_app, log_level
 from app.router import api_router, error_router
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+#sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 
 # Setup logging
@@ -33,7 +33,7 @@ def get_application() -> FastAPI:
     """Create app instance using config_app."""
     _app = FastAPI(
         title="datacite-export",
-        description="DOI prefix record extraction from DataCite with option DCAT-AP CH trigger",
+        description="DOI prefix record extraction from DataCite with optional DCAT-AP CH conversion trigger",
         version=config_app.APP_VERSION,
         license_info={
             "name": "Not specified"
