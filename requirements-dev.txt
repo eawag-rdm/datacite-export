@@ -1,0 +1,6 @@
+lxml
+requests
+python_on_whales
+pytest
+fastapi[standard]
+httpx
