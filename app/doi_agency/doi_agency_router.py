@@ -12,7 +12,8 @@ from app.doi_agency.constants import ConvertSuccess, ConvertError, DOIAgency
 #from app.external_doi.utils import get_doi_external_platform, convert_doi
 #from app.external_doi.zenodo import convert_zenodo_doi
 
-from app.doi_agency.datacite import get_doi_list_cursor
+from app.doi_agency.utils import get_doi_agency
+from app.doi_agency.datacite import get_doi_list_fastapi
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/doi_agency", tags=["doi_agency"])
 
 @router.get(
     "/list",
-    name="Return a list of the full DOIs for a given DOI prefix",
+    name="doi_list",
     status_code=200,
     responses={
         200: {
@@ -35,41 +36,47 @@ router = APIRouter(prefix="/doi_agency", tags=["doi_agency"])
     },
 )
 async def convert_external_doi(
+    doi_agency_name: Annotated[
+        str,
+        Query(
+            description="DOI agency",
+            openapi_examples={
+                "datacite": {
+                    "summary": "DataCite agency",
+                    "value": "datacite",
+                },
+            },
+        ),
+    ],    
     doi_prefix: Annotated[
         str,
         Query(
-            description="DOI from external platform",
+            description="DOI prefix",
             openapi_examples={
                 "datacite": {
                     "summary": "DataCite DOI prefix",
-                    "value": "10.13093",
+                    "value": "10.25678",
                 },
             },
         ),
     ],
-    owner_org: Annotated[
+    user_agent: Annotated[
         str,
         Query(
-            description="'owner_org' assigned to user in EnviDat CKAN",
+            description="email address to send to DOI agency for API call",
             openapi_examples={
                 "normal": {
-                    "summary": "Example owner_org value",
-                    "value": "bd536a0f-d6ac-400e-923c-9dd351cb05fa",
+                    "summary": "Example user_agent value",
+                    "value": "user@example.com",
                 }
             },
         ),
     ],
-    tag: List[str] = Query(
-        None,
-        description="Optional tag list that will be assigned as tags to "
-        "converted dataset",
-    ),
-    add_placeholders: Annotated[
+    dcat_trigger: Annotated[
         bool,
         Query(
-            alias="add-placeholders",
-            description="If true placeholder values are added for "
-            "required EnviDat package fields",
+            alias="DCAT-AP CH convert",
+            description="If true conversion to the DCAT-AP CH format is triggered.",
         ),
     ] = False,
 ):
@@ -79,37 +86,46 @@ async def convert_external_doi(
     """
 
     try:
-        doi_agency = get_doi_agency(doi_prefix)
-        match doi_agency:
-            case DOIAgency.DATACITE:
-                result = get_doi_list_cursor(doi_prefix=doi_prefix)
+#        doi_agency = get_doi_agency(doi_agency_name)
+#        match doi_agency:
+#            case DOIAgency.DATACITE:
+#                log.info("Here")
+#                result = get_doi_list_cursor(doi_prefix=doi_prefix)
 
+        result = get_doi_list_fastapi(doi_prefix=doi_prefix)
 
-        # Extract status code from conversion result
+        cont = result.get("result", {})
         sc = result.get("status_code", 500)
+        return JSONResponse(content=cont, status_code=sc)
 
-        # Return result if conversion successful
-        if is_type_valid(result, ConvertSuccess):
-            cont = result.get("result", {})
-            return JSONResponse(content=cont, status_code=sc)
-
-        # Return error if conversion failed
-        elif is_type_valid(result, ConvertError):
-            return JSONResponse(content=result, status_code=sc)
-
-        # Else raise exception if result cannot be validated as success or error
-        else:
-            raise Exception("Failed to validate result of conversion")
-
-    except Exception as e:
-        log.error(e)
-        return JSONResponse(
-            {
-                "status_code": 500,
-                "message": "Failed to convert external DOI",
-                "error": "Check logs for error",
-            }
-        )
+    except:
+        pass
+        
+##        # Extract status code from conversion result
+##        sc = result.get("status_code", 500)
+##
+##        # Return result if conversion successful
+##        if is_type_valid(result, ConvertSuccess):
+##            cont = result.get("result", {})
+##            return JSONResponse(content=cont, status_code=sc)
+##
+##        # Return error if conversion failed
+##        elif is_type_valid(result, ConvertError):
+##            return JSONResponse(content=result, status_code=sc)
+##
+##        # Else raise exception if result cannot be validated as success or error
+##        else:
+##            raise Exception("Failed to validate result of conversion")
+##
+##    except Exception as e:
+##        log.error(e)
+##        return JSONResponse(
+##            {
+##                "status_code": 500,
+##                "message": "Failed to bind to DOI agency '%s'" % doi_agency_name,
+##                "error": "Check logs for error",
+##            }
+##        )
 
 
 def is_type_valid(obj: Any, typ: Any) -> bool:

@@ -24,6 +24,20 @@ root_logger = logging.getLogger()
 
 #https://support.datacite.org/docs/api-get-doi
 
+def get_doi_list_fastapi(doi_prefix):
+
+    result = get_doi_list_cursor(doi_prefix=doi_prefix)
+
+##    return {
+##        "status_code": 200,
+##        "result": json.dumps(result)
+##        }
+    
+    return {
+        "status_code": 200,
+        "result": dict(zip(range(1,len(result)+1),result))
+        }
+
 def get_doi_list(doi_prefix="10.14454",
                  headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
                  filename=None):

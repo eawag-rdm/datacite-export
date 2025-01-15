@@ -19,7 +19,6 @@ class ConfigAppModel(BaseModel):
     """Class with required app environment variables and their types."""
 
     APP_VERSION: str
-#    CKAN_API_URL: AnyHttpUrl
     CORS_ORIGIN: AnyHttpUrl
     DEBUG: bool
     ROOT_PATH: Optional[str] = ""
