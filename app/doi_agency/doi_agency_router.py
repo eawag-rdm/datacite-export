@@ -94,9 +94,9 @@ async def convert_external_doi(
 
         result = get_doi_list_fastapi(doi_prefix=doi_prefix, cache=os.getenv("CACHE"))
 
-        cont = result.get("result", {})
-        sc = result.get("status_code", 500)
-        return JSONResponse(content=cont, status_code=sc)
+        #cont = result.get("result", {})
+        #sc = result.get("status_code", 500)
+        return JSONResponse(result)
 
     except:
         pass
