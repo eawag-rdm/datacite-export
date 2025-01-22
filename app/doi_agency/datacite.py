@@ -48,7 +48,7 @@ def get_doi_list_fastapi(doi_prefix, cache):
 ##        }
 
     return {
-        "status_code": 307,
+        "status_code": 200,
         "message": "Request %s started." % fid,
         "status_url": "/request?fid=%s" % fid }
 
