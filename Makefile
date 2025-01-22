@@ -22,3 +22,7 @@ uv:
 	uv init exdc
 	cd exdc
 	uv add -r ../requirements.txt
+
+run:
+	. venv/bin/activate
+	fastapi dev app/main.py --reload
