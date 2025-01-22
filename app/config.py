@@ -23,6 +23,7 @@ class ConfigAppModel(BaseModel):
     CORS_ORIGIN: AnyHttpUrl
     DEBUG: bool
     ROOT_PATH: Optional[str] = ""
+    CACHE: str
 
 
 @lru_cache

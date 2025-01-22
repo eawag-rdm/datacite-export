@@ -92,7 +92,7 @@ async def convert_external_doi(
 #                log.info("Here")
 #                result = get_doi_list_cursor(doi_prefix=doi_prefix)
 
-        result = get_doi_list_fastapi(doi_prefix=doi_prefix)
+        result = get_doi_list_fastapi(doi_prefix=doi_prefix, cache=os.getenv("CACHE"))
 
         cont = result.get("result", {})
         sc = result.get("status_code", 500)

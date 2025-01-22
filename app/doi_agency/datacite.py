@@ -9,6 +9,8 @@ from lxml import etree as ET
 import logging
 import sys
 
+import tempfile
+
 import os
 
 import math
@@ -24,19 +26,31 @@ root_logger = logging.getLogger()
 
 #https://support.datacite.org/docs/api-get-doi
 
-def get_doi_list_fastapi(doi_prefix):
+def get_doi_list_fastapi(doi_prefix, cache):
 
-    result = get_doi_list_cursor(doi_prefix=doi_prefix)
+    temp_dir = tempfile.TemporaryDirectory(dir=cache,delete=False)
+    fid = pathlib.Path(temp_dir.name).name
+    doi_file = pathlib.Path(temp_dir.name) / "doi.txt"
+
+    #this is blocking and should be modified with a fork or spawn
+    result = get_doi_list_cursor(doi_prefix=doi_prefix,
+                                 filename=doi_file,
+                                 header_line = True)
 
 ##    return {
 ##        "status_code": 200,
 ##        "result": json.dumps(result)
 ##        }
     
+##    return {
+##        "status_code": 200,
+##        "result": dict(zip(range(1,len(result)+1),result))
+##        }
+
     return {
-        "status_code": 200,
-        "result": dict(zip(range(1,len(result)+1),result))
-        }
+        "status_code": 307,
+        "message": "Request %s started." % fid,
+        "status_url": "/request?fid=%s" % fid }
 
 def get_doi_list(doi_prefix="10.14454",
                  headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
@@ -107,7 +121,8 @@ def get_doi_list_cursor(doi_prefix="10.14454",
                         url_template = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&page[size]=%i",
                         page_size=1000,
                         headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
-                        filename=None):
+                        filename=None,
+                        header_line=False):
     doi_list = []
 
 #    url = url_template % (provider, page_size)
@@ -137,6 +152,8 @@ def get_doi_list_cursor(doi_prefix="10.14454",
     LOGGER.info("Processing complete")
     if filename is not None:
         with open(filename,"w") as f:
+            if header_line:
+                f.write("%i\n" % len(doi_list))
             for d in doi_list:
                 f.write("%s\n" % d)
 
