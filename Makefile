@@ -24,5 +24,5 @@ uv:
 	uv add -r ../requirements.txt
 
 run:
-	. venv/bin/activate
+	. ./venv/bin/activate
 	fastapi dev app/main.py --reload
