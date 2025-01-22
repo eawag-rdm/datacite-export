@@ -6,6 +6,7 @@ from typing import Optional
 from dotenv import dotenv_values
 from pydantic import BaseModel, AnyHttpUrl, ValidationError
 
+import pathlib
 
 def env_example_keys() -> list[str]:
     """Return list with strings of keys in 'env.example'"""
@@ -41,7 +42,10 @@ def get_config_app() -> ConfigAppModel | Exception:
                 if val := os.getenv(key):
                     env_dict[key] = val
         else:
-            env_dict = dotenv_values(".env", verbose=True)
+            if pathlib.Path(".env").is_file():
+                env_dict = dotenv_values(".env", verbose=True)
+            else:
+                env_dict = dotenv_values("env.example", verbose=True)
 
         _config = ConfigAppModel(**env_dict)
         return _config
