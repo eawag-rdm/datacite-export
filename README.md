@@ -1,5 +1,36 @@
 DataCite Export
 ===============
+Downloads DataCite DOI records via the DataCite REST API version 2. Conceptually the process consists of 3 steps:
+
+1. Construct a DOI list based on a user specified DOI prefix
+2. Get the XML record for each DOI in the DOI list
+3. Compress all the XML records in a ZIP file
+
+## Command Line Usage
+
+.. code-block:: shell
+
+   python app/doi_agency/datacite.py
+
+usage: datacite.py [-h] [-d DOI] [-c CACHE] [-l LOG] [-v] [--info] [--debug] [--verbosity {0,1,2}] doi_prefix mailto
+
+positional arguments:
+  doi_prefix            DOI prefix used to get suffixes
+  mailto                contanct email address for the User-Agent header
+
+options:
+  -h, --help            show this help message and exit
+  -d DOI, --doi DOI     JSON output file for DOI
+  -c CACHE, --cache CACHE
+                        Output folder to cache results
+  -l LOG, --log LOG     Output file for log
+  -v                    increase output verbosity
+  --info                set output verbosity to 1 (INFO)
+  --debug               set output verbosity to 2 (DEBUG)
+  --verbosity {0,1,2}   set output verbosity
+
+
+## Library Usage
 
 ## Development Usage
 
