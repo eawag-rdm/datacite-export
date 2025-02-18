@@ -7,6 +7,7 @@ import sys
 import tempfile
 import os
 import math
+from packaging.version import Version
 
 from lxml import etree as ET
 import requests
@@ -24,14 +25,20 @@ root_logger = logging.getLogger()
 
 USER_AGENT = "https://github.com/eawag-rdm/datacite-export"
 USER_EMAIL = "noreply@example.com"
+DEFAULT_HEADER = {
+    "User-Agent": USER_AGENT,
+    "From": USER_EMAIL
+    }
 PAGE_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[size]=%i&page[number]=%i"
 PAGE1_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[size]=1&page[number]=1"
 CURSOR_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&page[size]=%i"
 #CURSOR_URL_TEMPLATE2 = "https://api.datacite.org/dois?provider-id=%s&page[cursor]=1&page[size]=%i"
 DOI_URL_TEMPLATE = "https://api.datacite.org/dois/%s"
+TIMEOUT=None
 
 def get_doi_list_fastapi(doi_prefix, cache):
-    """Binding for FastAPI call to DataCite API cursor for listing DOIs by prefix
+    """DO NOT USE: Template for binding for FastAPI call to DataCite API cursor call
+    to list DOIs by prefix
 
     Attributes:
         doi_prefix (str): DOI prefix for provider
@@ -41,7 +48,12 @@ def get_doi_list_fastapi(doi_prefix, cache):
         * Add in call to XML scraping
         * Design FastAPI asynchronous return for results
     """
-    temp_dir = tempfile.TemporaryDirectory(dir=cache,delete=False)
+    if (sys.version_info.major >= 3) and (sys.version_info.major >= 12):
+        temp_dir = tempfile.TemporaryDirectory(dir=cache,delete=False)
+    else:
+        #This probably won't work
+        temp_dir = tempfile.TemporaryDirectory(dir=cache)
+
     fid = pathlib.Path(temp_dir.name).name
     doi_file = pathlib.Path(temp_dir.name) / "doi.txt"
 
@@ -67,8 +79,7 @@ def get_doi_list_fastapi(doi_prefix, cache):
         }
 
 def get_doi_list(doi_prefix="10.14454",
-                 headers={"User-Agent": USER_AGENT,
-                          "From": USER_EMAIL},
+                 headers=DEFAULT_HEADER,
                  filename=None):
 
     """Calls the record count appropriate page or cursor based DOI list function
@@ -92,7 +103,7 @@ def get_doi_list(doi_prefix="10.14454",
     url = url_template % (doi_prefix)
     data = None
     LOGGER.debug("DataCite DOI query: %s", url)
-    json_response = json.loads(requests.get(url, headers=headers, data=data).text)
+    json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
     if json_response["meta"]["total"] > 10000:
         LOGGER.info("Gathering records with cursor API call(s)")
         fun = get_doi_list_cursor
@@ -109,8 +120,7 @@ def get_doi_list_page(doi_prefix="10.14454",
                  page_size = 100,
                  start_page = 1,
                  stop_offset = 0,
-                 headers={"User-Agent": USER_AGENT,
-                          "From": USER_EMAIL},
+                 headers=DEFAULT_HEADER,
                  filename=None):
 
     """Explictly page based API call to list full DOIs
@@ -137,7 +147,7 @@ def get_doi_list_page(doi_prefix="10.14454",
     data = None
     LOGGER.info("DataCite DOI query")
     LOGGER.debug("DataCite DOI query: %s", url)
-    json_response = json.loads(requests.get(url, headers=headers, data=data).text)
+    json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
     page_count = json_response["meta"]["totalPages"]
     result_count = json_response["meta"]["total"]
@@ -152,7 +162,7 @@ def get_doi_list_page(doi_prefix="10.14454",
 
         url = url_template % (doi_prefix, page_size, i)
         data = None
-        json_response = json.loads(requests.get(url, headers=headers, data=data).text)
+        json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
         doi_list.extend(datacite_doi_json_to_list(json_response))
 
@@ -172,7 +182,7 @@ def get_doi_list_page(doi_prefix="10.14454",
 def get_doi_list_cursor(doi_prefix="10.14454",
                         url_template = CURSOR_URL_TEMPLATE,
                         page_size=1000,
-                        headers={"User-Agent": USER_AGENT, "From": USER_EMAIL},
+                        headers=DEFAULT_HEADER,
                         filename=None,
                         header_line=False):
 
@@ -201,7 +211,7 @@ def get_doi_list_cursor(doi_prefix="10.14454",
 
     LOGGER.info("Processing page(s)")
     LOGGER.debug("Getting page 1")
-    json_response = json.loads(requests.get(url, headers=headers, data=data).text)
+    json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
     result_count = json_response["meta"]["total"]
     doi_list.extend(datacite_doi_json_to_list(json_response))
@@ -213,7 +223,7 @@ def get_doi_list_cursor(doi_prefix="10.14454",
         for i in range(2,page_count+1):
             LOGGER.debug("Getting page %i", i)
             LOGGER.debug("Next url: %s", next_url)
-            json_response = json.loads(requests.get(url, headers=headers, data=data).text)
+            json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
             doi_list.extend(datacite_doi_json_to_list(json_response))
 
@@ -256,8 +266,7 @@ def get_xml_list():
 
 def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
                           url_template = DOI_URL_TEMPLATE,
-                          headers={"User-Agent": USER_AGENT,
-                                   "From": USER_EMAIL},
+                          headers=DEFAULT_HEADER,
                           folder=None):
     """Explictly API based call to get DOI XML record
 
@@ -277,7 +286,7 @@ def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
         LOGGER.debug("Getting record %i: %s", i, d)
         url = url_template % (d)
         data = None
-        response = requests.get(url, headers=headers, data=data)
+        response = requests.get(url, headers=headers, data=data, timeout=TIMEOUT)
         dc_xml_et = ET.fromstring(
             base64.b64decode(
                 json.loads(response.text)["data"]["attributes"]["xml"]))
