@@ -7,7 +7,16 @@ Downloads DataCite DOI records via the DataCite REST API version 2. Conceptually
 3. Compress all the XML records into a ZIP file
 
 ## Command Line Usage
+Create a new virtual environment, activate it, and install dependencies from `requirements.txt`:
 
+```bash
+pip install virtualenv
+python -m venv <virtual-environment-name>
+<virtual-environment-name>/Scripts/activate
+python -m pip install -r requirements.txt
+```
+
+Run the commandline DataCite tool:
 ```
 python app/doi_agency/datacite.py -h
 ```
