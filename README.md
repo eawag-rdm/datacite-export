@@ -36,7 +36,7 @@ usage: datacite.py [-h] [-d DOI] [-c CACHE] [-l LOG] [-v] [--info] [--debug] [--
 ```
 import app.doi_agency.datacite
 ```
-## Development Usage
+## Development Usage (Untested)
 
 1. Configure environment variables for use **only in local development**
 
