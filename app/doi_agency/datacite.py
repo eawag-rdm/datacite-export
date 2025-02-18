@@ -1,21 +1,17 @@
 import argparse
 import pathlib
-
-import requests
 import json
 import base64
-from lxml import etree as ET
-
 import logging
 import sys
-
 import tempfile
-
 import os
-
 import math
 
-import pytest
+from lxml import etree as ET
+import requests
+
+#import pytest
 
 import python_on_whales
 from python_on_whales import docker
@@ -26,8 +22,25 @@ root_logger = logging.getLogger()
 
 #https://support.datacite.org/docs/api-get-doi
 
-def get_doi_list_fastapi(doi_prefix, cache):
+USER_AGENT = "https://github.com/eawag-rdm/datacite-export"
+USER_EMAIL = "noreply@example.com"
+PAGE_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[size]=%i&page[number]=%i"
+PAGE1_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[size]=1&page[number]=1"
+CURSOR_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&page[size]=%i"
+#CURSOR_URL_TEMPLATE2 = "https://api.datacite.org/dois?provider-id=%s&page[cursor]=1&page[size]=%i"
+DOI_URL_TEMPLATE = "https://api.datacite.org/dois/%s"
 
+def get_doi_list_fastapi(doi_prefix, cache):
+    """Binding for FastAPI call to DataCite API cursor for listing DOIs by prefix
+
+    Attributes:
+        doi_prefix (str): DOI prefix for provider
+        cache (str): session specific folder path
+
+    Todo:
+        * Add in call to XML scraping
+        * Design FastAPI asynchronous return for results
+    """
     temp_dir = tempfile.TemporaryDirectory(dir=cache,delete=False)
     fid = pathlib.Path(temp_dir.name).name
     doi_file = pathlib.Path(temp_dir.name) / "doi.txt"
@@ -41,7 +54,7 @@ def get_doi_list_fastapi(doi_prefix, cache):
 ##        "status_code": 200,
 ##        "result": json.dumps(result)
 ##        }
-    
+
 ##    return {
 ##        "status_code": 200,
 ##        "result": dict(zip(range(1,len(result)+1),result))
@@ -49,54 +62,94 @@ def get_doi_list_fastapi(doi_prefix, cache):
 
     return {
         "status_code": 200,
-        "message": "Request %s started." % fid,
-        "status_url": "/request?fid=%s" % fid }
+        "message": f"Request {fid} started.",
+        "status_url": f"/request?fid={fid}"
+        }
 
 def get_doi_list(doi_prefix="10.14454",
-                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
+                 headers={"User-Agent": USER_AGENT,
+                          "From": USER_EMAIL},
                  filename=None):
-    
+
+    """Calls the record count appropriate page or cursor based DOI list function
+
+    Note: This call is done on a basis of a single DOI prefix for a provider.
+    Providers can have multiple prefixes (I think).
+
+    Attributes:
+        doi_prefix (str): DOI prefix for provider
+        headers (dict): request header to inform DataCite about API call
+        filename (str): file path where to write the DOI list
+
+    Todo:
+        * Consider supporting a provider id instead/in addition to a DOI prefixe
+
+    """
     #logic to determine page or cursor approach
 
     #check record count with pagination
-    url_template = "https://api.datacite.org/dois?prefix=%s&page[size]=1&page[number]=1"
+    url_template = PAGE1_URL_TEMPLATE
     url = url_template % (doi_prefix)
     data = None
-    LOGGER.debug("DataCite DOI query: %s" % url)
-    json_response = json.loads(requests.get(url, headers=headers, data=data).text)    
+    LOGGER.debug("DataCite DOI query: %s", url)
+    json_response = json.loads(requests.get(url, headers=headers, data=data).text)
     if json_response["meta"]["total"] > 10000:
         LOGGER.info("Gathering records with cursor API call(s)")
-        return get_doi_list_cursor(doi_prefix, headers=headers, filename=filename)
+        fun = get_doi_list_cursor
+        #return get_doi_list_cursor(doi_prefix, headers=headers, filename=filename)
     else:
         LOGGER.info("Gathering records with pagnation API call(s)")
-        return get_doi_list_page(doi_prefix, headers=headers, filename=filename)
+        fun = get_doi_list_page
+        #return get_doi_list_page(doi_prefix, headers=headers, filename=filename)
+
+    return fun(doi_prefix, headers=headers, filename=filename)
 
 def get_doi_list_page(doi_prefix="10.14454",
-                 url_template = "https://api.datacite.org/dois?prefix=%s&page[size]=%i&page[number]=%i",
+                 url_template = PAGE_URL_TEMPLATE,
                  page_size = 100,
                  start_page = 1,
                  stop_offset = 0,
-                 headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
+                 headers={"User-Agent": USER_AGENT,
+                          "From": USER_EMAIL},
                  filename=None):
+
+    """Explictly page based API call to list full DOIs
+
+    Note: This call is done on a basis of a single DOI prefix for a provider.
+    Providers can have multiple prefixes (I think).
+
+    Attributes:
+        doi_prefix (str): DOI prefix for provider
+        url_template (str): URL template for API call
+        page_size (int): max number of items per page
+        start_page (int): page to start on begining with 1 meaning no exclusion
+        stop_offset (int): page to stop at ending with 0 meaning no exclusion
+        headers (dict): request header to inform DataCite about API call
+        filename (str): file path where to write the DOI list
+
+    Todo:
+        * Consider supporting a provider id instead/in addition to a DOI prefixe
+
+    """
     doi_list = []
 
     url = url_template % (doi_prefix, page_size, start_page)
     data = None
     LOGGER.info("DataCite DOI query")
-    LOGGER.debug("DataCite DOI query: %s" % url)
+    LOGGER.debug("DataCite DOI query: %s", url)
     json_response = json.loads(requests.get(url, headers=headers, data=data).text)
 
     page_count = json_response["meta"]["totalPages"]
     result_count = json_response["meta"]["total"]
 
     LOGGER.info("Processing page(s)")
-    LOGGER.debug("Processing page 1 of %i" % page_count)
+    LOGGER.debug("Processing page 1 of %i", page_count)
     doi_list.extend(datacite_doi_json_to_list(json_response))
-    
-    
+
+
     for i in range(start_page + 1, start_page + page_count - stop_offset):
-        LOGGER.debug("Processing page %i of %i" % (i, page_count))
-        
+        LOGGER.debug("Processing page %i of %i", i, page_count)
+
         url = url_template % (doi_prefix, page_size, i)
         data = None
         json_response = json.loads(requests.get(url, headers=headers, data=data).text)
@@ -107,22 +160,39 @@ def get_doi_list_page(doi_prefix="10.14454",
     if filename is not None:
         with open(filename,"w") as f:
             for d in doi_list:
-                f.write("%s\n" % d)
-        
+                f.write(f"{d}\n")
+
     try:
         assert len(doi_list) == result_count
     except AssertionError:
-        LOGGER.warn("Result count %i but actual DOI count %i" % (result_count, len(doi_list)))
+        LOGGER.warn("Result count %i but actual DOI count %i", result_count, len(doi_list))
 
     return doi_list
 
 def get_doi_list_cursor(doi_prefix="10.14454",
-#                        url_template = "https://api.datacite.org/dois?provider-id=%s&page[cursor]=1&page[size]=%i",
-                        url_template = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&page[size]=%i",
+                        url_template = CURSOR_URL_TEMPLATE,
                         page_size=1000,
-                        headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
+                        headers={"User-Agent": USER_AGENT, "From": USER_EMAIL},
                         filename=None,
                         header_line=False):
+
+    """Explictly cursor based API call to list full DOIs
+
+    Note: This call is done on a basis of a single DOI prefix for a provider.
+    Providers can have multiple prefixes (I think).
+
+    Attributes:
+        doi_prefix (str): DOI prefix for provider
+        url_template (str): URL template for API call
+        page_size (int): max number of items per page
+        headers (dict): request header to inform DataCite about API call
+        filename (str): file path where to write the DOI list
+
+    Todo:
+        * Consider supporting a provider id instead/in addition to a DOI prefixe
+
+    """
+
     doi_list = []
 
 #    url = url_template % (provider, page_size)
@@ -141,8 +211,8 @@ def get_doi_list_cursor(doi_prefix="10.14454",
 
         page_count = math.ceil(result_count/float(page_size))
         for i in range(2,page_count+1):
-            LOGGER.debug("Getting page %i" % i)
-            LOGGER.debug("Next url: %s" % next_url)
+            LOGGER.debug("Getting page %i", i)
+            LOGGER.debug("Next url: %s", next_url)
             json_response = json.loads(requests.get(url, headers=headers, data=data).text)
 
             doi_list.extend(datacite_doi_json_to_list(json_response))
@@ -153,13 +223,21 @@ def get_doi_list_cursor(doi_prefix="10.14454",
     if filename is not None:
         with open(filename,"w") as f:
             if header_line:
-                f.write("%i\n" % len(doi_list))
+                f.write(f"{len(doi_list)}\n")
             for d in doi_list:
-                f.write("%s\n" % d)
+                f.write("{d}\n")
 
     return doi_list
 
 def datacite_doi_json_to_list(dc_j):
+    """Extracts DOI values from a list of DataCite JSON objects
+
+    Attributes:
+        dc_j (list): list of DataCite JSON objects
+
+    Todo:
+        * Integrate this into the scrape to reduce memory footprint
+    """
     doi_list = []
 
     for d in dc_j["data"]:
@@ -168,18 +246,35 @@ def datacite_doi_json_to_list(dc_j):
     return doi_list
 
 def get_xml_list():
-    pass
+    """Calls the resource appropriate function to obtain DOI XML records
+
+    Note: This should default to using Bolognese via python_on_wheels
+
+    Todo:
+        * Everything
+    """
 
 def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
-                          url_template = "https://api.datacite.org/dois/%s",
-                          headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export", "From": "noreply@example.com"},
+                          url_template = DOI_URL_TEMPLATE,
+                          headers={"User-Agent": USER_AGENT,
+                                   "From": USER_EMAIL},
                           folder=None):
+    """Explictly API based call to get DOI XML record
 
+    Attributes:
+        doi_list (list): list of full DOI strings
+        url_template (str): url template for API call
+        headers (dict): request header to inform DataCite about API call
+        folder (str): path string for where to save XML files
+
+    Todo:
+        * Rate limiting needed
+    """
     xml_list = []
 
     LOGGER.info("Getting DOI record XML")
     for i,d in enumerate(doi_list, start=1):
-        LOGGER.debug("Getting record %i: %s" % (i, d))
+        LOGGER.debug("Getting record %i: %s", i, d)
         url = url_template % (d)
         data = None
         response = requests.get(url, headers=headers, data=data)
@@ -189,14 +284,25 @@ def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
 
         if folder:
             LOGGER.debug("Saving record to disk")
-            ET.ElementTree(dc_xml_et).write(os.path.join(folder, "%i.xml" %i), pretty_print=True)
-            
+            ET.ElementTree(dc_xml_et).write(os.path.join(folder, f"{i}.xml"), pretty_print=True)
+
         xml_list.append(dc_xml_et)
 
     return xml_list
 
 def get_xml_list_bolognese(doi_url="https://doi.org/10.7554/elife.01567",
                            docker_image="bolognese-cli"):
+    """Explictly Bolognese Docker call to get DOI XML record
+
+    Attributes:
+        doi_url (str): full DOI URL
+
+    Todo:
+        * Rate limiting needed
+        * Bolognese should support request headers
+        * Bolognese should support DOI batch requests
+        * Batch requests would need a path string for where to save XML files        
+    """
     try:
         xml = docker.run(docker_image,
                          [doi_url, "-t", "datacite"],
@@ -209,19 +315,19 @@ def get_xml_list_bolognese(doi_url="https://doi.org/10.7554/elife.01567",
 
 if __name__ == "__test__":
     #example pagination
-    doi_prefix_eawag = "10.25678"
+    DOI_PREFIX_EAWAG = "10.25678"
     folder_eawag = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                 "cache",
                                 "eawag")  
-    doi_list_eawag = get_doi_list_page(doi_prefix_eawag, folder=folder_eawag)
+    doi_list_eawag = get_doi_list_page(DOI_PREFIX_EAWAG, folder=folder_eawag)
     xml_list_eawag = get_xml_list(doi_list_eawag, folder=folder_eawag)
 
     #example cursor
-    doi_prefix_wsl = "10.16904"
+    DOI_PREFIX_WSL = "10.16904"
     folder_wsl = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                               "cache",
                               "wsl")
-    doi_list_wsl = get_doi_list_cursor(doi_prefix_wsl, folder=folder_wsl)
+    doi_list_wsl = get_doi_list_cursor(DOI_PREFIX_WSL, folder=folder_wsl)
     xml_list_wsl = get_xml_list(doi_list_wsl, folder=folder_wsl)
 
 if __name__ == "__main__":
@@ -245,14 +351,14 @@ if __name__ == "__main__":
                         help="set output verbosity to 2 (DEBUG)",
                         action="store_true")
     parser.add_argument("--verbosity", type=int, choices=[0, 1, 2],
-                        help="set output verbosity")    
+                        help="set output verbosity")
 
     args = parser.parse_args()
 
     ##consider adding an ERROR level logging
 
     #set User-Agent for requests
-    headers={"User-Agent": "https://github.com/eawag-rdm/datacite-export",
+    headers={"User-Agent": USER_AGENT,
              "From": args.mailto}  
 
     #DOIs to be written to the specified file
@@ -263,7 +369,7 @@ if __name__ == "__main__":
         handler.setFormatter(formatter)
         logging.basicConfig(level=logging.DEBUG, handlers=[handler])
         LOGGER.info("Logging to sys.stdout enabled")
-        LOGGER.info("Results will be written to \"%s\"" % args.doi.name)
+        LOGGER.info("Results will be written to \"%s\"", args.doi.name)
 
     #logging to the specified file
     if args.log is not None:
@@ -271,32 +377,34 @@ if __name__ == "__main__":
         fh.setLevel(logging.INFO)
         LOGGER.addHandler(fh)
 
-        LOGGER.info("Log will be written to \"%s\"" % args.log.name)
+        LOGGER.info("Log will be written to \"%s\"", args.log.name)
 
     #set logging level
-    log_level = None
+    LOG_LEVEL = None
     if args.info or (args.verbosity == 1) or ((args.v is not None) and (args.v == 1)):
         #to logging.INFO
-        log_level = "INFO"
-        
+        LOG_LEVEL = "INFO"
+
         for handler in LOGGER.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(logging.INFO)
 
         LOGGER.info('Logging level INFO')
-                
+
     elif args.debug or (args.verbosity == 2) or ((args.v is not None) and (args.v > 1)):
         #to logging.DEBUG
-        log_level = "DEBUG"
-        
+        LOG_LEVEL = "DEBUG"
+
         for handler in LOGGER.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
                 handler.setLevel(logging.DEBUG)
 
             LOGGER.debug('Logging level DEBUG')
-            
-    LOGGER.info("Begining scrape of DOI prefix \"%s\" with User-Agent \"%s\" and logging level %s"
-              % (args.doi_prefix, args.mailto, log_level))
+
+    LOGGER.info("Begining scrape of DOI prefix \"%s\" with User-Agent \"%s\" and logging level %s",
+                args.doi_prefix,
+                args.mailto,
+                LOG_LEVEL)
 
     if args.doi is None:
         print(get_doi_list(args.doi_prefix, headers=headers))
@@ -304,7 +412,3 @@ if __name__ == "__main__":
         get_doi_list(args.doi_prefix,headers=headers, filename=args.doi.name)
 
     get_xml_list_bolognese()
-
-    
-
-    
