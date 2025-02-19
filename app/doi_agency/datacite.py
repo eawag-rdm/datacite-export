@@ -7,7 +7,8 @@ import sys
 import tempfile
 import os
 import math
-from packaging.version import Version
+#from packaging.version import Version
+import re
 
 from lxml import etree as ET
 import requests
@@ -35,6 +36,9 @@ CURSOR_URL_TEMPLATE = "https://api.datacite.org/dois?prefix=%s&page[cursor]=1&pa
 #CURSOR_URL_TEMPLATE2 = "https://api.datacite.org/dois?provider-id=%s&page[cursor]=1&page[size]=%i"
 DOI_URL_TEMPLATE = "https://api.datacite.org/dois/%s"
 TIMEOUT=None
+
+def doi_to_file(doi):
+    pass
 
 def get_doi_list_fastapi(doi_prefix, cache):
     """DO NOT USE: Template for binding for FastAPI call to DataCite API cursor call
@@ -209,8 +213,9 @@ def get_doi_list_cursor(doi_prefix="10.14454",
     url = url_template % (doi_prefix, page_size)
     data = None
 
-    LOGGER.info("Processing page(s)")
-    LOGGER.debug("Getting page 1")
+
+    LOGGER.info("Processing cursor(s)")
+    LOGGER.debug("Getting cursor 1")
     json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
     result_count = json_response["meta"]["total"]
@@ -221,7 +226,7 @@ def get_doi_list_cursor(doi_prefix="10.14454",
 
         page_count = math.ceil(result_count/float(page_size))
         for i in range(2,page_count+1):
-            LOGGER.debug("Getting page %i", i)
+            LOGGER.debug("Getting cursor %i", i)
             LOGGER.debug("Next url: %s", next_url)
             json_response = json.loads(requests.get(url, headers=headers, data=data, timeout=TIMEOUT).text)
 
@@ -279,8 +284,11 @@ def get_xml_list_datacite(doi_list=["10.14454/FXWS-0523"],
     Todo:
         * Rate limiting needed
     """
+    if folder:
+        if not pathlib.Path(folder).is_dir():
+            pathlib.Path(folder).mkdir(parents=True)
+            
     xml_list = []
-
     LOGGER.info("Getting DOI record XML")
     for i,d in enumerate(doi_list, start=1):
         LOGGER.debug("Getting record %i: %s", i, d)
@@ -377,6 +385,7 @@ if __name__ == "__main__":
         formatter = logging.Formatter(datefmt='%Y.%m.%d %H:%M:%S ')
         handler.setFormatter(formatter)
         logging.basicConfig(level=logging.DEBUG, handlers=[handler])
+        root_logger.addHandler(handler)
         LOGGER.info("Logging to sys.stdout enabled")
         LOGGER.info("Results will be written to \"%s\"", args.doi.name)
 
@@ -393,6 +402,7 @@ if __name__ == "__main__":
     if args.info or (args.verbosity == 1) or ((args.v is not None) and (args.v == 1)):
         #to logging.INFO
         LOG_LEVEL = "INFO"
+        print(f"Logging level set to {LOG_LEVEL}")
 
         for handler in LOGGER.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
@@ -403,6 +413,7 @@ if __name__ == "__main__":
     elif args.debug or (args.verbosity == 2) or ((args.v is not None) and (args.v > 1)):
         #to logging.DEBUG
         LOG_LEVEL = "DEBUG"
+        print(f"Logging level set to {LOG_LEVEL}")
 
         for handler in LOGGER.handlers:
             if isinstance(handler, type(logging.StreamHandler())):
@@ -416,8 +427,14 @@ if __name__ == "__main__":
                 LOG_LEVEL)
 
     if args.doi is None:
-        print(get_doi_list(args.doi_prefix, headers=headers))
+        doi_list = get_doi_list_cursor(args.doi_prefix, headers=headers)
+        print(doi_list)
     else:
-        get_doi_list(args.doi_prefix,headers=headers, filename=args.doi.name)
+        doi_list = get_doi_list_cursor(args.doi_prefix,headers=headers, filename=args.doi.name)
 
-    get_xml_list_bolognese()
+    LOGGER.info("Begin scrape of DOI records.")
+
+    if args.cache is None:
+        print(get_xml_list_datacite(doi_list, headers=headers))
+    else:
+        get_xml_list_datacite(doi_list, headers=headers, folder=args.cache)
